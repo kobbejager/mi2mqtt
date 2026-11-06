@@ -10,18 +10,19 @@ from typing import Any
 
 import aiomqtt
 
-from miscan.config import Config
-from miscan.discovery import (
+from mi2mqtt.config import Config
+from mi2mqtt.discovery import (
+    LEGACY_OBJECT_PREFIX,
     OBJECT_PREFIX,
     VALUES,
     discovery_messages,
     object_id,
     object_id_from_topic,
 )
-from miscan.parsers import MODELS, Reading, parse
-from miscan.scanner import scan
+from mi2mqtt.parsers import MODELS, Reading, parse
+from mi2mqtt.scanner import scan
 
-log = logging.getLogger("miscan")
+log = logging.getLogger("mi2mqtt")
 
 RESTORE_TIMEOUT = 5.0
 RECONNECT_DELAY = 5.0
@@ -48,7 +49,7 @@ class App:
     # --- BLE packets ---------------------------------------------------------------------
 
     def publish(self, topic: str, payload: str) -> None:
-        """Queue a retained message (everything miscan publishes is retained)."""
+        """Queue a retained message (everything mi2mqtt publishes is retained)."""
         try:
             self.queue.put_nowait((topic, payload))
         except asyncio.QueueFull:
@@ -103,7 +104,7 @@ class App:
         )
         device_id = "sensor_" + mac.replace(":", "")[-6:].lower()
         log.info(
-            "unconfigured sensor %s (%s, %d dBm, %s); to publish it add to miscan.yaml:\n"
+            "unconfigured sensor %s (%s, %d dBm, %s); to publish it add to mi2mqtt.yaml:\n"
             "  %s:\n    mac: %s\n    name: %s\n    model: %s",
             mac,
             reading.format,
@@ -134,7 +135,7 @@ class App:
         return topics
 
     def apply_retained(self, topic: str, payload: bytes) -> None:
-        """Remember retained topics that miscan no longer publishes (restore phase)."""
+        """Remember retained topics that mi2mqtt no longer publishes (restore phase)."""
         if not payload:
             return
         if topic == self.prefix or topic.startswith(self.prefix + "/"):
@@ -142,7 +143,9 @@ class App:
                 self._stale.add(topic)
             return
         found = object_id_from_topic(self.config.discovery.prefix, topic)
-        if found and found.startswith(OBJECT_PREFIX):
+        if found and found.startswith(LEGACY_OBJECT_PREFIX):
+            self._stale.add(topic)
+        elif found and found.startswith(OBJECT_PREFIX):
             if found not in {object_id(device) for device in self.config.devices.values()}:
                 self._stale.add(topic)
 

@@ -9,10 +9,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from miscan.app import App
-from miscan.config import Config, load_config, load_env_file
-from miscan.scanner import ScannerError, scan
-from miscan.survey import Survey
+from mi2mqtt.app import App
+from mi2mqtt.config import Config, load_config, load_env_file
+from mi2mqtt.scanner import ScannerError, scan
+from mi2mqtt.survey import Survey
 
 
 async def _run(app: App) -> None:
@@ -34,12 +34,12 @@ async def _survey(config: Config, seconds: float) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="miscan", description="Xiaomi BLE thermometers to MQTT and Home Assistant"
+        prog="mi2mqtt", description="Xiaomi BLE thermometers to MQTT and Home Assistant"
     )
-    parser.add_argument("-c", "--config", default="miscan.yaml", help="configuration file")
+    parser.add_argument("-c", "--config", default="mi2mqtt.yaml", help="configuration file")
     parser.add_argument(
         "--env-file",
-        help="file with MISCAN_MQTT_* settings (default: .env in the current directory, if present)",
+        help="file with MI_MQTT_* settings (default: .env in the current directory, if present)",
     )
     parser.add_argument(
         "--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]

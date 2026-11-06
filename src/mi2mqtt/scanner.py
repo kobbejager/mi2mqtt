@@ -11,10 +11,10 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 from bleak.exc import BleakError
 
-from miscan.config import BleConfig
-from miscan.parsers import UUIDS
+from mi2mqtt.config import BleConfig
+from mi2mqtt.parsers import UUIDS
 
-log = logging.getLogger("miscan.scanner")
+log = logging.getLogger("mi2mqtt.scanner")
 
 # Service data 0x181A (ATC1441/PVVX) or 0xFE95 (Xiaomi MiBeacon); the UUID is little endian on air.
 OR_PATTERNS = [

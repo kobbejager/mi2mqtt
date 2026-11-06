@@ -1,9 +1,9 @@
-"""`miscan --scan`: list every sensor in range, to find the MAC of a new one."""
+"""`mi2mqtt --scan`: list every sensor in range, to find the MAC of a new one."""
 
 from dataclasses import dataclass, field
 
-from miscan.config import Config
-from miscan.parsers import parse
+from mi2mqtt.config import Config
+from mi2mqtt.parsers import parse
 
 
 @dataclass

@@ -1,4 +1,4 @@
-"""Configuration file (miscan.yaml) loading and validation."""
+"""Configuration file (mi2mqtt.yaml) loading and validation."""
 
 import os
 import re
@@ -23,8 +23,8 @@ class MqttConfig(Model):
     username: str | None = None
     password: str | None = None
     password_file: Path | None = None
-    prefix: str = "miscan"
-    client_id: str = "miscan"
+    prefix: str = "mi"
+    client_id: str = "mi2mqtt"
     keepalive: int = 60
     qos: Literal[0, 1, 2] = 1
 
@@ -108,11 +108,11 @@ def _env(loader: yaml.SafeLoader, node: yaml.Node) -> str:
 _Loader.add_constructor("!env", _env)
 
 
-ENV_PREFIX = "MISCAN_MQTT_"
+ENV_PREFIX = "MI_MQTT_"
 
 
 def mqtt_from_env(env: Mapping[str, str]) -> dict[str, str]:
-    """MQTT settings from MISCAN_MQTT_<FIELD> variables, e.g. MISCAN_MQTT_HOST."""
+    """MQTT settings from MI_MQTT_<FIELD> variables, e.g. MI_MQTT_HOST."""
     settings = {}
     for field in MqttConfig.model_fields:
         value = env.get(ENV_PREFIX + field.upper())
@@ -122,7 +122,7 @@ def mqtt_from_env(env: Mapping[str, str]) -> dict[str, str]:
 
 
 def parse_config(text: str, env: Mapping[str, str] | None = None) -> Config:
-    """Parse miscan.yaml; MISCAN_MQTT_* environment variables override its `mqtt:` section."""
+    """Parse mi2mqtt.yaml; MI_MQTT_* environment variables override its `mqtt:` section."""
     data = yaml.load(text, Loader=_Loader) or {}
     overrides = mqtt_from_env(os.environ if env is None else env)
     if overrides and isinstance(data, dict):

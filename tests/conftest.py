@@ -1,12 +1,12 @@
 import pytest
 
-from miscan.app import App
-from miscan.config import parse_config
-from miscan.parsers import UUID_ENVIRONMENTAL, UUID_XIAOMI
+from mi2mqtt.app import App
+from mi2mqtt.config import parse_config
+from mi2mqtt.parsers import UUID_ENVIRONMENTAL, UUID_XIAOMI
 
 CONFIG = """
 mqtt:
-  prefix: miscan
+  prefix: mi
 availability:
   timeout: 900
 devices:

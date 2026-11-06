@@ -2,7 +2,7 @@ import pytest
 from conftest import CONFIG
 from pydantic import ValidationError
 
-from miscan.config import load_env_file, parse_config
+from mi2mqtt.config import load_env_file, parse_config
 
 
 def test_example_config():
@@ -12,12 +12,12 @@ def test_example_config():
 
 
 def test_env_overrides_mqtt():
-    config = parse_config(CONFIG, env={"MISCAN_MQTT_HOST": "broker", "MISCAN_MQTT_PORT": "8883"})
-    assert (config.mqtt.host, config.mqtt.port, config.mqtt.prefix) == ("broker", 8883, "miscan")
+    config = parse_config(CONFIG, env={"MI_MQTT_HOST": "broker", "MI_MQTT_PORT": "8883"})
+    assert (config.mqtt.host, config.mqtt.port, config.mqtt.prefix) == ("broker", 8883, "mi")
 
 
 def test_example_file_is_valid():
-    with open("miscan.example.yaml") as file:
+    with open("mi2mqtt.example.yaml") as file:
         parse_config(file.read(), env={})
 
 
@@ -36,13 +36,13 @@ def test_invalid_devices(devices):
 
 
 def test_env_file(tmp_path, monkeypatch):
-    monkeypatch.delenv("MISCAN_MQTT_HOST", raising=False)
-    monkeypatch.setenv("MISCAN_MQTT_PORT", "1")
+    monkeypatch.delenv("MI_MQTT_HOST", raising=False)
+    monkeypatch.setenv("MI_MQTT_PORT", "1")
     path = tmp_path / "env"
-    path.write_text("# comment\nMISCAN_MQTT_HOST='broker'\nexport MISCAN_MQTT_PORT=2\n")
-    assert load_env_file(path) == ["MISCAN_MQTT_HOST"]
+    path.write_text("# comment\nMI_MQTT_HOST='broker'\nexport MI_MQTT_PORT=2\n")
+    assert load_env_file(path) == ["MI_MQTT_HOST"]
     import os
 
-    assert os.environ["MISCAN_MQTT_HOST"] == "broker"
-    assert os.environ["MISCAN_MQTT_PORT"] == "1"
-    monkeypatch.delenv("MISCAN_MQTT_HOST")
+    assert os.environ["MI_MQTT_HOST"] == "broker"
+    assert os.environ["MI_MQTT_PORT"] == "1"
+    monkeypatch.delenv("MI_MQTT_HOST")

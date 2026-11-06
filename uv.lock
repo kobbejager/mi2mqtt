@@ -110,7 +110,7 @@ wheels = [
 ]
 
 [[package]]
-name = "miscan"
+name = "mi2mqtt"
 version = "2.0.0.dev0"
 source = { editable = "." }
 dependencies = [

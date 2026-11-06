@@ -1,13 +1,13 @@
-# miscan configuration. Every setting is shown with its default, except devices.
+# mi2mqtt configuration. Every setting is shown with its default, except devices.
 
 # MQTT connection. host, port, username and password normally come from .env
-# (MISCAN_MQTT_HOST, ...); every setting here can be overridden as MISCAN_MQTT_<KEY>.
+# (MI_MQTT_HOST, ...); every setting here can be overridden as MI_MQTT_<KEY>.
 mqtt:
-  prefix: miscan             # topics: <prefix>/status, <prefix>/<id>/temperature, ...
-  client_id: miscan
+  prefix: mi                 # topics: <prefix>/status, <prefix>/<id>/temperature, ...
+  client_id: mi2mqtt
   keepalive: 60
   qos: 1
-  # password_file: /etc/miscan/mqtt-password   # alternative to MISCAN_MQTT_PASSWORD
+  # password_file: /etc/mi2mqtt/mqtt-password   # alternative to MI_MQTT_PASSWORD
 
 ble:
   # adapter: hci0            # default: BlueZ's default adapter
@@ -23,7 +23,7 @@ discovery:                   # Home Assistant MQTT discovery
   prefix: homeassistant
   default_entity_ids: true   # sensor.<id>_temperature etc.; needs Home Assistant >= 2025.10
 
-# Only these sensors are published. Run `miscan --scan` to list the sensors in range, or look
+# Only these sensors are published. Run `mi2mqtt --scan` to list the sensors in range, or look
 # for "unconfigured sensor" in the log.
 devices:
   woonkamer:                 # id: used in the MQTT topics; letters, digits, '_' and '-'

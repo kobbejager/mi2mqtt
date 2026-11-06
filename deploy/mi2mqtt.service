@@ -1,0 +1,26 @@
+[Unit]
+Description=mi2mqtt: Xiaomi BLE thermometers to MQTT
+Wants=network-online.target bluetooth.service
+After=network-online.target bluetooth.service
+
+[Service]
+Type=simple
+User=mi2mqtt
+Group=mi2mqtt
+# D-Bus access to BlueZ (org.bluez) is granted to the bluetooth group
+SupplementaryGroups=bluetooth
+WorkingDirectory=/opt/mi2mqtt
+# Expects a virtual environment in /opt/mi2mqtt/.venv with mi2mqtt installed (see README, "As a systemd service")
+ExecStart=/opt/mi2mqtt/.venv/bin/mi2mqtt --config /etc/mi2mqtt/mi2mqtt.yaml
+# MI_MQTT_HOST, _USERNAME, _PASSWORD, ... (same format as .env, see .env.example)
+EnvironmentFile=-/etc/mi2mqtt/env
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

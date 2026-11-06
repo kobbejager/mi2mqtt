@@ -1,6 +1,6 @@
 from conftest import atc1441, mibeacon, pvvx
 
-from miscan.parsers import UUID_ENVIRONMENTAL, UUID_XIAOMI, Reading, parse
+from mi2mqtt.parsers import UUID_ENVIRONMENTAL, UUID_XIAOMI, Reading, parse
 
 
 def test_pvvx():

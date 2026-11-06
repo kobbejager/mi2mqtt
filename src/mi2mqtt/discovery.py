@@ -3,17 +3,18 @@
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
-from miscan.config import DeviceConfig
+from mi2mqtt.config import DeviceConfig
 
-OBJECT_PREFIX = "miscan_"
+OBJECT_PREFIX = "mi2mqtt_"
+LEGACY_OBJECT_PREFIX = "miscan_"  # before the rename to mi2mqtt; always cleared
 VALUES = ("temperature", "humidity", "battery", "rssi")
 
 try:
-    VERSION = version("miscan")
+    VERSION = version("mi2mqtt")
 except PackageNotFoundError:  # pragma: no cover - running from a source tree
     VERSION = "dev"
 
-ORIGIN = {"name": "miscan", "sw_version": VERSION}
+ORIGIN = {"name": "mi2mqtt", "sw_version": VERSION}
 
 # The entity name is left out, so Home Assistant names it after the (translated) device class.
 SENSORS: dict[str, dict[str, Any]] = {
