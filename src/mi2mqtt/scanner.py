@@ -16,13 +16,17 @@ from mi2mqtt.parsers import UUIDS
 
 log = logging.getLogger("mi2mqtt.scanner")
 
-# BlueZ needs at least one pattern for passive scanning. A pattern on the service data UUID does not
-# work: BlueZ (e.g. 5.82) compares service data patterns with the bytes after the UUID. So match the
-# common values of the Flags field instead, which every connectable BLE device sends (Home Assistant
-# does the same), and filter on the service data UUID in `detected`.
+# Passive scanning needs patterns: BlueZ only passes on advertisements that match one of them. A
+# pattern on the service data UUID does not work, because BlueZ (e.g. 5.82) compares service data
+# patterns with the bytes *after* the UUID, of any service data UUID. `detected` checks the UUID.
 OR_PATTERNS = [
-    OrPattern(0, AdvertisementDataType.FLAGS, flags)
-    for flags in (b"\x02", b"\x06", b"\x1a")  # LE general discoverable, + BR/EDR not supported, + dual mode
+    # Flags, as sent by most devices (Home Assistant matches the same values). This catches MiBeacon
+    # sensors: LE general discoverable, + BR/EDR not supported, + simultaneous LE and BR/EDR.
+    *(OrPattern(0, AdvertisementDataType.FLAGS, flags) for flags in (b"\x02", b"\x06", b"\x1a")),
+    # ATC1441 and PVVX firmware send no Flags, only service data 0x181A starting with the sensor's MAC,
+    # so match the Telink OUI A4:C1:38 of the LYWSD03MMC: big endian (ATC1441), little endian (PVVX).
+    OrPattern(0, AdvertisementDataType.SERVICE_DATA_UUID16, b"\xa4\xc1\x38"),
+    OrPattern(3, AdvertisementDataType.SERVICE_DATA_UUID16, b"\x38\xc1\xa4"),
 ]
 
 PacketCallback = Callable[[str, int, str, bytes], None]  # mac, rssi, uuid, service data

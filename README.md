@@ -123,7 +123,11 @@ Experimental = true
 or start `bluetoothd` with `--experimental` (`sudo systemctl edit bluetooth`; see `systemctl cat bluetooth`
 for the `ExecStart=` line to copy). Then `sudo systemctl restart bluetooth`.
 
-`ble.scanning_mode: active` works without this. In active mode, however, BlueZ sends a scan request for
+In passive mode BlueZ only passes on advertisements that match a filter. ATC1441 and PVVX firmware
+advertise nothing but their service data, so mi2mqtt recognises them by the MAC prefix `A4:C1:38` of the
+LYWSD03MMC in that data. A sensor whose MAC was changed in the firmware is only seen in active mode.
+
+`ble.scanning_mode: active` works without the experimental features. In active mode, however, BlueZ sends a scan request for
 every advertisement and the sensor answers it, which costs battery. The same happens when another program
 (for example the Home Assistant Bluetooth integration) scans actively with the same adapter.
 
