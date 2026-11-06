@@ -16,10 +16,13 @@ from mi2mqtt.parsers import UUIDS
 
 log = logging.getLogger("mi2mqtt.scanner")
 
-# Service data 0x181A (ATC1441/PVVX) or 0xFE95 (Xiaomi MiBeacon); the UUID is little endian on air.
+# BlueZ needs at least one pattern for passive scanning. A pattern on the service data UUID does not
+# work: BlueZ (e.g. 5.82) compares service data patterns with the bytes after the UUID. So match the
+# common values of the Flags field instead, which every connectable BLE device sends (Home Assistant
+# does the same), and filter on the service data UUID in `detected`.
 OR_PATTERNS = [
-    OrPattern(0, AdvertisementDataType.SERVICE_DATA_UUID16, b"\x1a\x18"),
-    OrPattern(0, AdvertisementDataType.SERVICE_DATA_UUID16, b"\x95\xfe"),
+    OrPattern(0, AdvertisementDataType.FLAGS, flags)
+    for flags in (b"\x02", b"\x06", b"\x1a")  # LE general discoverable, + BR/EDR not supported, + dual mode
 ]
 
 PacketCallback = Callable[[str, int, str, bytes], None]  # mac, rssi, uuid, service data
