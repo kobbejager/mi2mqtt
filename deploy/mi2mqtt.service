@@ -1,3 +1,7 @@
+# Example unit: adapt it to your system before installing it (see README, "Installation"):
+# - User/Group: the account that runs mi2mqtt and can read the install directory, including .env
+# - WorkingDirectory/ExecStart: where you cloned mi2mqtt; mi2mqtt.yaml and .env are read from there
+# - ProtectHome=true hides /home: use ProtectHome=read-only when installed under a home directory
 [Unit]
 Description=mi2mqtt: Xiaomi BLE thermometers to MQTT
 Wants=network-online.target bluetooth.service
@@ -5,15 +9,12 @@ After=network-online.target bluetooth.service
 
 [Service]
 Type=simple
-User=mi2mqtt
-Group=mi2mqtt
+User=wim
+Group=wim
 # D-Bus access to BlueZ (org.bluez) is granted to the bluetooth group
 SupplementaryGroups=bluetooth
-WorkingDirectory=/opt/mi2mqtt
-# Expects a virtual environment in /opt/mi2mqtt/.venv with mi2mqtt installed (see README, "As a systemd service")
-ExecStart=/opt/mi2mqtt/.venv/bin/mi2mqtt --config /etc/mi2mqtt/mi2mqtt.yaml
-# MI_MQTT_HOST, _USERNAME, _PASSWORD, ... (same format as .env, see .env.example)
-EnvironmentFile=-/etc/mi2mqtt/env
+WorkingDirectory=/srv/scripts/mi2mqtt
+ExecStart=/srv/scripts/mi2mqtt/.venv/bin/mi2mqtt
 Restart=on-failure
 RestartSec=10
 

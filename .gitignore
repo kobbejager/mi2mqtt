@@ -5,6 +5,9 @@ __pycache__
 .ruff_cache
 requirements.txt
 
+# local configuration (see mi2mqtt.example.yaml)
+mi2mqtt.yaml
+
 # secrets: MQTT connection settings (see .env.example)
 .env
 .env.*

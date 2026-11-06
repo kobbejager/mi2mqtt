@@ -59,53 +59,55 @@ behind. mi2mqtt republishes discovery when Home Assistant restarts (`homeassista
 
 ## Installation
 
-mi2mqtt is a normal Python package (Python ≥ 3.12). Installing it into a virtual environment gives you a
-`mi2mqtt` command at `.venv/bin/mi2mqtt`. Its dependencies are `bleak`, `aiomqtt`, `pydantic` and `PyYAML`.
-Bleak talks to BlueZ (`bluetoothd`) over D-Bus with the pure Python package `dbus-fast`. No system
-packages are needed beyond BlueZ itself.
-
-The exact dependency versions that were tested are pinned in `uv.lock`. Option A uses that file
-automatically. With option B you install from `pyproject.toml`, which only gives minimum versions, so
-you may get newer releases.
-
-### Option A: `uv venv` + `uv pip` (classic workflow)
+mi2mqtt runs as a systemd service. Everything lives in one directory: the code, the `.venv/`,
+`mi2mqtt.yaml` and `.env`. The examples below use `/srv/scripts/mi2mqtt`. It needs Python ≥ 3.12,
+[uv](https://docs.astral.sh/uv/) and BlueZ (`bluetoothd`); no other system packages.
 
 ```sh
+cd /srv/scripts
+git clone https://github.com/kobbejager/mi2mqtt.git
 cd mi2mqtt
-uv venv                          # creates .venv/
-uv pip install -e .              # installs mi2mqtt (editable) and its dependencies
-uv pip install --group dev       # optional: pytest and ruff, for development
+uv sync --frozen --no-dev                # creates .venv/ with the versions from uv.lock
+
+cp mi2mqtt.example.yaml mi2mqtt.yaml
+$EDITOR mi2mqtt.yaml                     # your sensors, see "Adding a sensor"
+cp .env.example .env
+chmod 600 .env
+$EDITOR .env                             # fill in MI_MQTT_HOST, _USERNAME, _PASSWORD
+.venv/bin/mi2mqtt --check-config
+
+$EDITOR deploy/mi2mqtt.service           # adapt User, Group and the paths, see below
+sudo cp deploy/mi2mqtt.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now mi2mqtt
+journalctl -u mi2mqtt -f                 # follow the log
 ```
 
-Then either activate the environment or call the binaries directly:
+> [!IMPORTANT]
+> [`deploy/mi2mqtt.service`](deploy/mi2mqtt.service) is an example from my own setup. Adapt it to your
+> system before you install it:
+>
+> - `User=` and `Group=`: the account that runs mi2mqtt. It must be able to read the install directory,
+>   including `.env`.
+> - `WorkingDirectory=` and `ExecStart=`: the directory you cloned into. mi2mqtt reads `mi2mqtt.yaml` and
+>   `.env` from its working directory.
+> - `ProtectHome=true` hides `/home`, `/root` and `/run/user` from the service. If you install under a home
+>   directory, change it to `ProtectHome=read-only`.
+>
+> `SupplementaryGroups=bluetooth` gives the service access to BlueZ over D-Bus. That is the policy on
+> Debian and Raspberry Pi OS; check `/usr/share/dbus-1/system.d/bluetooth.conf` on other systems.
+
+`mi2mqtt.yaml` and `.env` are in `.gitignore`, so `git pull` never touches them. To update:
 
 ```sh
-source .venv/bin/activate
-mi2mqtt --help
-# or, without activating:
-.venv/bin/mi2mqtt --help
+cd /srv/scripts/mi2mqtt
+git pull
+uv sync --frozen --no-dev
+sudo systemctl restart mi2mqtt
 ```
 
-To use the tested versions from `uv.lock` with this workflow:
-
-```sh
-uv export --frozen --no-dev --no-emit-project -o requirements.txt
-uv pip install -r requirements.txt
-uv pip install --no-deps .
-```
-
-### Option B: `uv sync` (project workflow)
-
-```sh
-cd mi2mqtt
-uv sync                          # add --no-dev on a production machine
-```
-
-`uv sync` creates `.venv/`, installs exactly the versions in `uv.lock` plus the dev tools, and installs
-mi2mqtt itself in editable mode. `uv run mi2mqtt --help` runs a command in `.venv/` without activating it.
-
-The rest of this README writes plain `mi2mqtt ...`. Activate `.venv` first, or put `.venv/bin/` or
-`uv run` in front.
+If `deploy/mi2mqtt.service` changed, merge the changes into your copy in `/etc/systemd/system/` and run
+`sudo systemctl daemon-reload` first.
 
 ### Passive scanning
 
@@ -127,33 +129,28 @@ every advertisement and the sensor answers it, which costs battery. The same hap
 
 ## Configuration
 
-See [`mi2mqtt.example.yaml`](mi2mqtt.example.yaml) for every option.
+mi2mqtt reads `mi2mqtt.yaml` and `.env` from the current directory, which for the service is its
+`WorkingDirectory`. Use `-c PATH` and `--env-file PATH` to read other files.
 
-### MQTT connection: `.env`
+- `mi2mqtt.yaml` holds the sensors. See [`mi2mqtt.example.yaml`](mi2mqtt.example.yaml) for every option.
+- `.env` holds the broker host, port, username and password. It is not committed. Every `mqtt:` setting can
+  be set here as `MI_MQTT_<KEY>`, which overrides `mi2mqtt.yaml`. A variable already set in the
+  environment wins over the file.
 
-The broker host, port, username and password are not in `mi2mqtt.yaml`. They come from environment
-variables, normally kept in a `.env` file. `.env` is in `.gitignore`, so it is never committed.
+Useful commands:
 
 ```sh
-cp .env.example .env
-chmod 600 .env
-$EDITOR .env                                 # fill in MI_MQTT_HOST, _USERNAME, _PASSWORD
+.venv/bin/mi2mqtt --scan                 # list the sensors in range (30 s; or --scan 120)
+.venv/bin/mi2mqtt --check-config         # validate the configuration
+.venv/bin/mi2mqtt --dump-discovery       # print what Home Assistant will receive
+.venv/bin/mi2mqtt --log-level DEBUG      # run by hand and show every packet
 ```
 
-- **Where it looks:** mi2mqtt reads `.env` from the current directory. Use `--env-file PATH` to read
-  another file.
-- **Precedence:** a variable that is already set in the environment wins over the same one in the file.
-- **Which settings:** every `mqtt:` setting can be set as `MI_MQTT_<KEY>`, and that overrides
-  `mi2mqtt.yaml`.
-- **Format:** plain `KEY=value` lines, the same format systemd's `EnvironmentFile=` uses.
+When run by hand, stop it with Ctrl+C. mi2mqtt publishes `offline` on `<prefix>/status` before exiting.
 
 ### Adding a sensor
 
-```sh
-mi2mqtt --scan                               # listen for 30 seconds; or --scan 120
-```
-
-This lists every sensor in range, configured or not, with the strongest signal first. It doesn't need
+`--scan` lists every sensor in range, configured or not, with the strongest signal first. It doesn't need
 MQTT or a configuration file:
 
 ```
@@ -170,95 +167,26 @@ with a snippet to paste into `mi2mqtt.yaml`:
 journalctl -u mi2mqtt | grep -A4 unconfigured
 ```
 
-### Checking the configuration
-
-```sh
-mi2mqtt -c mi2mqtt.yaml --check-config       # validate the configuration
-mi2mqtt -c mi2mqtt.yaml --dump-discovery     # print what Home Assistant will receive
-```
-
-## Running
-
-```sh
-mi2mqtt -c mi2mqtt.yaml                      # reads .env; add --log-level DEBUG to see every packet
-```
-
-Stop it with Ctrl+C. mi2mqtt publishes `offline` on `<prefix>/status` before exiting.
-
-### As a systemd service
-
-The unit file [`deploy/mi2mqtt.service`](deploy/mi2mqtt.service) expects:
-
-| what                       | where                                     |
-|----------------------------|-------------------------------------------|
-| the code and its `.venv/`  | `/opt/mi2mqtt`                            |
-| the configuration          | `/etc/mi2mqtt/mi2mqtt.yaml`               |
-| the MQTT settings (`.env`) | `/etc/mi2mqtt/env`                        |
-| the service account        | user `mi2mqtt`, also in group `bluetooth` |
-
-The `bluetooth` group gives access to BlueZ over D-Bus (this is the policy on Debian and Raspberry Pi OS;
-check `/usr/share/dbus-1/system.d/bluetooth.conf` on other systems). Every step:
-
-```sh
-# 1. service account and code
-sudo useradd --system --home-dir /opt/mi2mqtt --shell /usr/sbin/nologin --groups bluetooth mi2mqtt
-sudo git clone <repo-url> /opt/mi2mqtt
-sudo chown -R mi2mqtt: /opt/mi2mqtt
-
-# 2. virtual environment, as the mi2mqtt user (option A shown; option B: uv sync --frozen --no-dev)
-cd /opt/mi2mqtt
-sudo -u mi2mqtt uv venv
-sudo -u mi2mqtt uv export --frozen --no-dev --no-emit-project -o requirements.txt
-sudo -u mi2mqtt uv pip install -r requirements.txt
-sudo -u mi2mqtt uv pip install --no-deps .
-sudo -u mi2mqtt /opt/mi2mqtt/.venv/bin/mi2mqtt --scan  # check: Bluetooth access and passive scanning
-
-# 3. configuration and MQTT settings
-sudo install -d /etc/mi2mqtt
-sudo cp mi2mqtt.example.yaml /etc/mi2mqtt/mi2mqtt.yaml
-sudoedit /etc/mi2mqtt/mi2mqtt.yaml                 # your sensors
-sudo install -m 600 .env.example /etc/mi2mqtt/env
-sudoedit /etc/mi2mqtt/env                          # fill in host, username, password
-sudo /opt/mi2mqtt/.venv/bin/mi2mqtt -c /etc/mi2mqtt/mi2mqtt.yaml --env-file /etc/mi2mqtt/env --check-config
-
-# 4. service
-sudo cp deploy/mi2mqtt.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now mi2mqtt
-journalctl -u mi2mqtt -f                           # follow the log
-```
-
-To update:
-
-```sh
-cd /opt/mi2mqtt && sudo -u mi2mqtt git pull
-sudo -u mi2mqtt uv pip install --no-deps .         # option B: sudo -u mi2mqtt uv sync --frozen --no-dev
-sudo systemctl restart mi2mqtt
-```
-
-If `uv.lock` changed, first rerun the `uv export` and `uv pip install -r requirements.txt` lines from
-step 2.
-
 ## Migrating from miscan
 
 This project used to be called miscan. Version 2 of miscan and mi2mqtt are the same code, but the
 names changed:
 
-| what                      | miscan                             | mi2mqtt                         |
-|---------------------------|------------------------------------|---------------------------------|
-| command and service       | `miscan`, `miscan.service`         | `mi2mqtt`, `mi2mqtt.service`    |
-| configuration file        | `/etc/miscan/miscan.yaml`          | `/etc/mi2mqtt/mi2mqtt.yaml`     |
-| MQTT settings             | `/etc/miscan/env`, `MISCAN_MQTT_*` | `/etc/mi2mqtt/env`, `MI_MQTT_*` |
-| default topic prefix      | `miscan`                           | `mi`                            |
-| default client id         | `miscan`                           | `mi2mqtt`                       |
-| Home Assistant object ids | `miscan_<mac>`                     | `mi2mqtt_<mac>`                 |
+| what                      | miscan                             | mi2mqtt                           |
+|---------------------------|------------------------------------|-----------------------------------|
+| command and service       | `miscan`, `miscan.service`         | `mi2mqtt`, `mi2mqtt.service`      |
+| configuration file        | `/etc/miscan/miscan.yaml`          | `mi2mqtt.yaml` (install dir)      |
+| MQTT settings             | `/etc/miscan/env`, `MISCAN_MQTT_*` | `.env` (install dir), `MI_MQTT_*` |
+| default topic prefix      | `miscan`                           | `mi`                              |
+| default client id         | `miscan`                           | `mi2mqtt`                         |
+| Home Assistant object ids | `miscan_<mac>`                     | `mi2mqtt_<mac>`                   |
 
 1. Stop the old service: `sudo systemctl disable --now miscan`, and remove
    `/etc/systemd/system/miscan.service`.
-2. Install mi2mqtt as described above. Copy `/etc/miscan/miscan.yaml` to `/etc/mi2mqtt/mi2mqtt.yaml` and
-   `/etc/miscan/env` to `/etc/mi2mqtt/env`, and rename the `MISCAN_MQTT_` variables to `MI_MQTT_`. Remove
-   `mqtt.prefix` and `mqtt.client_id` if they were set to `miscan`, or keep `prefix: miscan` to keep the
-   old topics.
+2. Install mi2mqtt as described above, but copy `/etc/miscan/miscan.yaml` to `mi2mqtt.yaml` and
+   `/etc/miscan/env` to `.env` in the install directory instead of the examples. Rename the
+   `MISCAN_MQTT_` variables to `MI_MQTT_`. Remove `mqtt.prefix` and `mqtt.client_id` if they were set to
+   `miscan`, or keep `prefix: miscan` to keep the old topics.
 3. Start mi2mqtt. It removes the `miscan_<mac>` discovery, so Home Assistant deletes the old devices and
    creates new ones. Entity ids, custom names and history of the old entities do not carry over.
 4. With a new prefix, the old retained `miscan/...` topics stay on the broker. Clear them with
@@ -279,16 +207,13 @@ topics move to `mi/...`; clear the v1 topics as in step 4 above.
 
 ## Development
 
-Install with the dev tools (`uv pip install -e . && uv pip install --group dev`, or `uv sync`). Then:
-
 ```sh
-pytest                                   # or: uv run pytest
-ruff check . && ruff format --check .
+uv sync                                  # installs mi2mqtt (editable) plus pytest and ruff
+uv run pytest
+uv run ruff check . && uv run ruff format --check .
 ```
 
-Dependencies are declared in `pyproject.toml`. Add one with `uv add <package>` (or `uv add --dev
-<package>`), which also updates `uv.lock`. If you only edit `pyproject.toml` by hand, run `uv lock`
-afterwards.
+Add a dependency with `uv add <package>` (or `uv add --dev <package>`), which also updates `uv.lock`.
 
 The packet parsers (`parsers.py`) and the application logic (`app.py`) are tested without Bluetooth or
 MQTT. The tests build packets in each format and use a fake clock for availability.
